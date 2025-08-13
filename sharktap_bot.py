@@ -3,6 +3,8 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import requests
 import asyncio
+import os
+
 
 # === CONFIGURATION ===
 TOKEN = "7615369637:AAGgWix8r3pE0ntiQyaLNnnW15P-Qa5h_eI"
