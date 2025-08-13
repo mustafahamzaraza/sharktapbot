@@ -2,10 +2,11 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import requests
+import asyncio
 
 # === CONFIGURATION ===
 TOKEN = "7615369637:AAGgWix8r3pE0ntiQyaLNnnW15P-Qa5h_eI"
-WEBHOOK_URL = "https://sharktapbot.onrender.com"  # Replace with your actual Render app URL
+WEBHOOK_URL = "https://sharktapbot.onrender.com"  # Your Render app URL
 GAME_SHORT_NAME = "sharktap123"
 GAME_URL = "https://beatbid.store"
 
@@ -15,18 +16,19 @@ app = Flask(__name__)
 # === TELEGRAM BOT APP ===
 telegram_app = Application.builder().token(TOKEN).build()
 
-# /start or /play command
+# === BOT COMMANDS ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send the game when user types /start or /play"""
     chat_id = update.effective_chat.id
     await context.bot.send_game(chat_id=chat_id, game_short_name=GAME_SHORT_NAME)
 
-# Handle the "Play" button click
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle the Play button click and open the game URL"""
     query = update.callback_query
     await context.bot.answer_callback_query(callback_query_id=query.id, url=GAME_URL)
 
-# /setscore command
 async def set_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manually set a score for the user (test command)"""
     try:
         score = int(context.args[0])
     except (IndexError, ValueError):
@@ -44,12 +46,12 @@ async def set_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
             force=True,
             game_short_name=GAME_SHORT_NAME
         )
-        await update.message.reply_text(f"Score of {score} saved for you!")
+        await update.message.reply_text(f"✅ Score of {score} saved for you!")
     except Exception as e:
-        await update.message.reply_text(f"Failed to set score: {e}")
+        await update.message.reply_text(f"❌ Failed to set score: {e}")
 
-# /debug command — tells you the chat/user ID and confirms webhook works
 async def debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Check if webhook is receiving updates"""
     user = update.effective_user
     chat = update.effective_chat
     await update.message.reply_text(
@@ -67,10 +69,15 @@ telegram_app.add_handler(CommandHandler("debug", debug))
 telegram_app.add_handler(CallbackQueryHandler(handle_callback_query))
 
 # === FLASK ROUTES ===
+@app.route("/", methods=["GET"])
+def home():
+    return "SharkTapBot is running!", 200
+
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
+    """Receive updates from Telegram and process them asynchronously"""
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-    telegram_app.update_queue.put_nowait(update)
+    asyncio.run_coroutine_threadsafe(telegram_app.process_update(update), telegram_app.loop)
     return "ok"
 
 # === SET WEBHOOK ===
@@ -85,7 +92,9 @@ def set_webhook():
 # === MAIN ENTRYPOINT ===
 if __name__ == "__main__":
     set_webhook()
-    app.run(host="0.0.0.0", port=5000)
+    telegram_app.run_polling() if os.environ.get("RUN_LOCAL") else app.run(host="0.0.0.0", port=5000)
+
+
 
 
 
