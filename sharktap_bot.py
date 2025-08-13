@@ -48,10 +48,22 @@ async def set_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Failed to set score: {e}")
 
+# /debug command — tells you the chat/user ID and confirms webhook works
+async def debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    chat = update.effective_chat
+    await update.message.reply_text(
+        f"✅ Webhook is working!\n"
+        f"👤 User ID: {user.id}\n"
+        f"💬 Chat ID: {chat.id}\n"
+        f"Username: @{user.username if user.username else 'No username'}"
+    )
+
 # === REGISTER HANDLERS ===
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(CommandHandler("play", start))
 telegram_app.add_handler(CommandHandler("setscore", set_score))
+telegram_app.add_handler(CommandHandler("debug", debug))
 telegram_app.add_handler(CallbackQueryHandler(handle_callback_query))
 
 # === FLASK ROUTES ===
@@ -74,6 +86,87 @@ def set_webhook():
 if __name__ == "__main__":
     set_webhook()
     app.run(host="0.0.0.0", port=5000)
+
+
+
+
+
+# from flask import Flask, request
+# from telegram import Update
+# from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+# import requests
+
+# # === CONFIGURATION ===
+# TOKEN = "7615369637:AAGgWix8r3pE0ntiQyaLNnnW15P-Qa5h_eI"
+# WEBHOOK_URL = "https://sharktapbot.onrender.com"  # Replace with your actual Render app URL
+# GAME_SHORT_NAME = "sharktap123"
+# GAME_URL = "https://beatbid.store"
+
+# # === FLASK APP ===
+# app = Flask(__name__)
+
+# # === TELEGRAM BOT APP ===
+# telegram_app = Application.builder().token(TOKEN).build()
+
+# # /start or /play command
+# async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     chat_id = update.effective_chat.id
+#     await context.bot.send_game(chat_id=chat_id, game_short_name=GAME_SHORT_NAME)
+
+# # Handle the "Play" button click
+# async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     query = update.callback_query
+#     await context.bot.answer_callback_query(callback_query_id=query.id, url=GAME_URL)
+
+# # /setscore command
+# async def set_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     try:
+#         score = int(context.args[0])
+#     except (IndexError, ValueError):
+#         await update.message.reply_text("Please provide a valid score: /setscore 100")
+#         return
+
+#     user_id = update.effective_user.id
+#     chat_id = update.effective_chat.id
+
+#     try:
+#         await context.bot.set_game_score(
+#             user_id=user_id,
+#             score=score,
+#             chat_id=chat_id,
+#             force=True,
+#             game_short_name=GAME_SHORT_NAME
+#         )
+#         await update.message.reply_text(f"Score of {score} saved for you!")
+#     except Exception as e:
+#         await update.message.reply_text(f"Failed to set score: {e}")
+
+# # === REGISTER HANDLERS ===
+# telegram_app.add_handler(CommandHandler("start", start))
+# telegram_app.add_handler(CommandHandler("play", start))
+# telegram_app.add_handler(CommandHandler("setscore", set_score))
+# telegram_app.add_handler(CallbackQueryHandler(handle_callback_query))
+
+# # === FLASK ROUTES ===
+# @app.route(f"/{TOKEN}", methods=["POST"])
+# def webhook():
+#     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+#     telegram_app.update_queue.put_nowait(update)
+#     return "ok"
+
+# # === SET WEBHOOK ===
+# def set_webhook():
+#     webhook_url = f"{WEBHOOK_URL}/{TOKEN}"
+#     resp = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}")
+#     if resp.status_code == 200:
+#         print(f"✅ Webhook set to {webhook_url}")
+#     else:
+#         print(f"❌ Failed to set webhook: {resp.text}")
+
+# # === MAIN ENTRYPOINT ===
+# if __name__ == "__main__":
+#     set_webhook()
+#     app.run(host="0.0.0.0", port=5000)
 
 
 
