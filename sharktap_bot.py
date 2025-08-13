@@ -18,6 +18,11 @@ app = Flask(__name__)
 # === TELEGRAM BOT APP ===
 telegram_app = Application.builder().token(TOKEN).build()
 
+
+
+
+
+
 # === BOT COMMANDS ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send the game when user types /start or /play"""
@@ -63,12 +68,6 @@ async def debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Username: @{user.username if user.username else 'No username'}"
     )
 
-# === REGISTER HANDLERS ===
-telegram_app.add_handler(CommandHandler("start", start))
-telegram_app.add_handler(CommandHandler("play", start))
-telegram_app.add_handler(CommandHandler("setscore", set_score))
-telegram_app.add_handler(CommandHandler("debug", debug))
-telegram_app.add_handler(CallbackQueryHandler(handle_callback_query))
 
 # === FLASK ROUTES ===
 @app.route("/", methods=["GET"])
@@ -93,8 +92,24 @@ def set_webhook():
 
 # === MAIN ENTRYPOINT ===
 if __name__ == "__main__":
+    telegram_app = Application.builder().token(TOKEN).build()
+
+    # Add all handlers here
+    telegram_app.add_handler(CommandHandler("start", start))
+    telegram_app.add_handler(CommandHandler("play", start))
+    telegram_app.add_handler(CommandHandler("setscore", set_score))
+    telegram_app.add_handler(CommandHandler("debug", debug))
+    telegram_app.add_handler(CallbackQueryHandler(handle_callback_query))
+
+    # Set webhook for server mode
     set_webhook()
-    telegram_app.run_polling() if os.environ.get("RUN_LOCAL") else app.run(host="0.0.0.0", port=5000)
+
+    # Run bot
+    if os.environ.get("RUN_LOCAL"):
+        telegram_app.run_polling()
+    else:
+        app.run(host="0.0.0.0", port=5000)
+
 
 
 
