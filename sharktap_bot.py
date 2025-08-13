@@ -1,33 +1,31 @@
 from flask import Flask, request
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+import requests
 
-# Replace with your BotFather token
+# === CONFIGURATION ===
 TOKEN = "7615369637:AAGgWix8r3pE0ntiQyaLNnnW15P-Qa5h_eI"
-
-# Your public Render domain (no trailing slash)
-WEBHOOK_URL = "https://sharktapbot.onrender.com"  # Change to your Render URL
-
-# Game details
+WEBHOOK_URL = "https://sharktapbot.onrender.com"  # Replace with your actual Render app URL
 GAME_SHORT_NAME = "sharktap123"
 GAME_URL = "https://beatbid.store"
 
+# === FLASK APP ===
 app = Flask(__name__)
 
-# Create Telegram application
+# === TELEGRAM BOT APP ===
 telegram_app = Application.builder().token(TOKEN).build()
 
-# Send game when /start or /play is typed
+# /start or /play command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     await context.bot.send_game(chat_id=chat_id, game_short_name=GAME_SHORT_NAME)
 
-# Handle the "Play" button click and provide the game URL
+# Handle the "Play" button click
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await context.bot.answer_callback_query(callback_query_id=query.id, url=GAME_URL)
 
-# Command to set score
+# /setscore command
 async def set_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         score = int(context.args[0])
@@ -50,29 +48,38 @@ async def set_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Failed to set score: {e}")
 
-# Add handlers
+# === REGISTER HANDLERS ===
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(CommandHandler("play", start))
 telegram_app.add_handler(CommandHandler("setscore", set_score))
 telegram_app.add_handler(CallbackQueryHandler(handle_callback_query))
 
-# Flask route for webhook
+# === FLASK ROUTES ===
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
     telegram_app.update_queue.put_nowait(update)
     return "ok"
 
-# Startup: Set webhook
-@app.before_first_request
+# === SET WEBHOOK ===
 def set_webhook():
-    import requests
     webhook_url = f"{WEBHOOK_URL}/{TOKEN}"
-    requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}")
-    print(f"✅ Webhook set to {webhook_url}")
+    resp = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}")
+    if resp.status_code == 200:
+        print(f"✅ Webhook set to {webhook_url}")
+    else:
+        print(f"❌ Failed to set webhook: {resp.text}")
 
+# === MAIN ENTRYPOINT ===
 if __name__ == "__main__":
+    set_webhook()
     app.run(host="0.0.0.0", port=5000)
+
+
+
+
+
+
 
 
 
